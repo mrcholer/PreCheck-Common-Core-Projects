@@ -1,0 +1,78 @@
+prtest 0.1.0 · libft (subject 19.3) · /home/claude/prtest/selftest/golden
+sandbox /tmp/prtest-09focb94 · cc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0 · seed 0x2f9c41aa
+
+Project
+  ✓ detected as Libft
+  ✓ compiler is cc
+  ✓ compiles with -Wall -Wextra -Werror
+  ✓ library built with ar (not libtool)
+  ✓ make builds libft.a at the repo root
+  ✓ second `make` does not relink
+  ✓ `make clean` removes objects, keeps libft.a
+  ✓ `make fclean` removes libft.a
+  ✓ `make re` rebuilds
+  ✓ `make all` works
+  ✓ libft.a defines the required functions
+  ✓ helper functions are static
+  ✓ no global variables
+  ✓ only allowed external functions are used
+  ✓ libft.h exists at the repo root
+  ✓ no `restrict` in prototypes
+  ✓ include guard present
+  ✓ every implemented function is declared in libft.h
+  ✓ libft.h compiles alone, twice, and defines t_list{content,next}
+  ✓ prototypes in libft.h match the subject (v19.3)
+
+ ctype
+  ✓ ft_isalpha         2/2
+  ✓ ft_isdigit         2/2
+  ✓ ft_isalnum         2/2
+  ✓ ft_isascii         2/2
+  ✓ ft_isprint         2/2
+  ✓ ft_toupper         2/2
+  ✓ ft_tolower         2/2
+ string
+  ✓ ft_strlen          3/3
+  ✓ ft_strchr          3/3
+  ✓ ft_strrchr         3/3
+  ✓ ft_strncmp         3/3
+  ✓ ft_strnstr         2/2
+  ✓ ft_strlcpy         1/1
+  ✓ ft_strlcat         1/1
+ memory
+  ✓ ft_memset          2/2
+  ✓ ft_bzero           1/1
+  ✓ ft_memcpy          2/2
+  ✓ ft_memmove         2/2
+  ✓ ft_memchr          1/1
+  ✓ ft_memcmp          2/2
+  ✓ ft_calloc          5/5
+  ✓ ft_strdup          2/2
+ convert
+  ✓ ft_atoi            2/2
+  ✓ ft_itoa            3/3
+ alloc
+  ✓ ft_substr          4/4
+  ✓ ft_strjoin         3/3
+  ✓ ft_strtrim         3/3
+  ✓ ft_split           7/7
+  ✓ ft_strmapi         3/3
+  ✓ ft_striteri        2/2
+ output
+  ✓ ft_putchar_fd      3/3
+  ✓ ft_putstr_fd       4/4
+  ✓ ft_putendl_fd      3/3
+  ✓ ft_putnbr_fd       3/3
+ list
+  ✓ ft_lstnew          3/3
+  ✓ ft_lstadd_front    1/1
+  ✓ ft_lstsize         2/2
+  ✓ ft_lstlast         2/2
+  ✓ ft_lstadd_back     1/1
+  ✓ ft_lstdelone       1/1
+  ✓ ft_lstclear        2/2
+  ✓ ft_lstiter         2/2
+  ✓ ft_lstmap          4/4
+
+Summary  passed 125 · failed 0 · warnings 0 · skipped 0 · missing 0   (43 functions, 2.2 s)
+Result   PASS

@@ -1,0 +1,169 @@
+prtest 0.1.0 · libft (subject 19.3) · /home/claude/prtest/examples/broken_libft
+sandbox /tmp/prtest-_w_1k0xj · cc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0 · seed 0x2f9c41aa
+
+Project
+  ✓ detected as Libft
+  ✓ compiler is cc
+  ✓ compiles with -Wall -Wextra -Werror
+  ✓ library built with ar (not libtool)
+  ✓ make builds libft.a at the repo root
+  ✓ second `make` does not relink
+  ✓ `make clean` removes objects, keeps libft.a
+  ✓ `make fclean` removes libft.a
+  ✓ `make re` rebuilds
+  ✓ `make all` works
+  ! libft.a defines the required functions
+       expected  43 functions
+       actual    42 found
+       hint      missing: ft_putnbr_fd
+  ! helper functions are static
+       expected  only the subject's functions exported
+       actual    exported: helper_unused
+       hint      make helper functions `static` (subject, IV.1)
+  ✓ no global variables
+  ✗ only allowed external functions are used
+       expected  malloc/free/write only where listed
+       actual    ft_bzero.o uses memset
+       hint      the compiler may have turned a loop into a memset call (check optimisation flags) - or you called it directly
+  ✓ libft.h exists at the repo root
+  ✓ no `restrict` in prototypes
+  ✓ include guard present
+  ✓ every implemented function is declared in libft.h
+  ✓ libft.h compiles alone, twice, and defines t_list{content,next}
+  ✗ prototypes in libft.h match the subject (v19.3)
+       expected  no conflicting declarations
+       actual       38 | unsigned int ft_lstsize(t_list *lst);
+                       |              ^~~~~~~~~~
+                 In file included from /tmp/prtest-hdr-1khecaqr/b.c:1:
+                 /tmp/prtest-_w_1k0xj/proj/libft.h:48:5: note: previous declaration of 'ft_lstsize' with type 'int(t_list *)' {aka 'int(struct s_list *)'}
+                    48 | int ft_lstsize(t_list *lst);
+                       |     ^~~~~~~~~~
+       hint      your header's prototypes must match the subject exactly (v19.3: ft_lstsize returns unsigned int)
+
+ ctype
+  ✓ ft_isalpha         2/2
+  ✗ ft_isdigit         0/2   1 warning(s)
+  ✓ ft_isalnum         2/2
+  ✓ ft_isascii         2/2
+  ✓ ft_isprint         2/2
+  ✓ ft_toupper         2/2
+  ✓ ft_tolower         2/2
+ string
+  ✓ ft_strlen          3/3
+  ✓ ft_strchr          3/3
+  ✓ ft_strrchr         3/3
+  ✓ ft_strncmp         3/3
+  ✓ ft_strnstr         2/2
+  ✓ ft_strlcpy         1/1
+  ✗ ft_strlcat         0/1
+ memory
+  ✓ ft_memset          2/2
+  ✓ ft_bzero           1/1
+  ✓ ft_memcpy          2/2
+  ✗ ft_memmove         0/2
+  ✓ ft_memchr          1/1
+  ✓ ft_memcmp          2/2
+  ✓ ft_calloc          5/5
+  ✓ ft_strdup          2/2
+ convert
+  ✓ ft_atoi            2/2
+  ✓ ft_itoa            3/3
+ alloc
+  ✗ ft_substr          2/4
+  ✗ ft_strjoin         2/3
+  ✓ ft_strtrim         3/3
+  ✗ ft_split           5/7
+  ✓ ft_strmapi         3/3
+  ✓ ft_striteri        2/2
+ output
+  ✓ ft_putchar_fd      3/3
+  ✓ ft_putstr_fd       4/4
+  ✓ ft_putendl_fd      3/3
+  - ft_putnbr_fd       not found in libft.a
+ list
+  ✓ ft_lstnew          3/3
+  ✓ ft_lstadd_front    1/1
+  ✓ ft_lstsize         2/2
+  ✓ ft_lstlast         2/2
+  ✓ ft_lstadd_back     1/1
+  ✓ ft_lstdelone       1/1
+  ✓ ft_lstclear        2/2
+  ✓ ft_lstiter         2/2
+  ✓ ft_lstmap          4/4
+
+Failures
+ ✗ project › only allowed external functions are used   [spec]
+     expected  malloc/free/write only where listed
+     actual    ft_bzero.o uses memset
+     hint      the compiler may have turned a loop into a memset call (check optimisation flags) - or you called it directly
+
+ ✗ project › prototypes in libft.h match the subject (v19.3)   [spec]
+     expected  no conflicting declarations
+     actual       38 | unsigned int ft_lstsize(t_list *lst);
+                     |              ^~~~~~~~~~
+               In file included from /tmp/prtest-hdr-1khecaqr/b.c:1:
+               /tmp/prtest-_w_1k0xj/proj/libft.h:48:5: note: previous declaration of 'ft_lstsize' with type 'int(t_list *)' {aka 'int(struct s_list *)'}
+                  48 | int ft_lstsize(t_list *lst);
+                     |     ^~~~~~~~~~
+     hint      your header's prototypes must match the subject exactly (v19.3: ft_lstsize returns unsigned int)
+
+ ✗ ft_substr › regular substrings, len clamped to the end of the string   [spec, crash]
+     call      ft_substr("hello world", 6, 100)
+     expected  no crash
+     actual    segmentation fault (signal 11)
+     hint      likely out-of-bounds read/write, NULL deref or stack overflow (guard pages catch overruns)
+
+ ✗ ft_substr › len = SIZE_MAX must not overflow len + 1   [spec, crash]
+     call      ft_substr("hello", 2, SIZE_MAX)
+     expected  no crash
+     actual    segmentation fault (signal 11)
+     hint      likely out-of-bounds read/write, NULL deref or stack overflow (guard pages catch overruns)
+
+ ✗ ft_strjoin › empty/non-empty combinations; result is always a NEW block   [spec, memory]
+     call      ft_strjoin("", "")
+     expected  valid memory usage
+     actual    free() of a pointer malloc never returned (string literal? stack buffer? pointer moved off the start of its block?)
+     hint      always malloc a fresh string, even when one side is empty (returning s1 or s2 would be freed twice / invalidly)
+
+ ✗ ft_split › failing at every malloc: NULL returned and everything already allocated is freed [inject]   [spec, leak]
+     call      ft_split("a b  c d", ' ')  [malloc #2 of 5 made to fail]
+     expected  every allocation freed
+     actual    1 block(s) never freed, 40 byte(s) total (40 B)
+     hint      when a word allocation fails, free the words already created AND the array before returning NULL
+
+ ✗ ft_split › failing at every malloc, delimiters at both ends [inject]   [spec, leak]
+     call      ft_split(",x,yy,,zzz,", ',')  [malloc #2 of 4 made to fail]
+     expected  every allocation freed
+     actual    1 block(s) never freed, 32 byte(s) total (32 B)
+
+ ✗ ft_isdigit › returns exactly 1 or 0 for 0..255 and EOF   [spec]
+     call      ft_isdigit(48 '0')
+     expected  1
+     actual    8
+     hint      the subject requires exactly 1 (match) or 0 (no match), not just a non-zero value
+
+ ✗ ft_memmove › every (src, dst, n) overlap combination in a 128-byte buffer   [spec]
+     call      ft_memmove(buf+1, buf+0, 2)
+     expected  byte 2 = 0x0a
+     actual    byte 2 = 0x03
+     hint      copy backwards when dst > src and the regions overlap
+
+ ✗ ft_memmove › non-overlapping copies and a 5000-byte shift by one in both directions   [spec]
+     call      ft_memmove 5000-byte shift (dst > src)
+     expected  byte 2 = 0x0d
+     actual    byte 2 = 0x00
+
+ ✗ ft_strlcat › return value, truncation, NUL termination, dst longer than size   [spec]
+     call      ft_strlcat(dst="" in a 0-byte buffer, "xy", 0) return value
+     expected  2
+     actual    0
+     hint      return min(size, strlen(dst)) + strlen(src); when size <= strlen(dst) leave dst untouched; never read past size
+
+Warnings
+ ! ft_isdigit › values outside unsigned char range (-300..600)   [convention]
+     call      ft_isdigit(48)
+     expected  1
+     actual    8
+
+Summary  passed 108 · failed 11 · warnings 3 · skipped 0 · missing 1   (43 functions, 2.0 s)
+Result   FAIL

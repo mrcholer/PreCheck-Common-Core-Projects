@@ -1,0 +1,46 @@
+prtest self-test: golden libft + 38 mutants
+
+golden libft              OK   (passed 125, failed 0, warnings 0)
+golden libft + ASan/UBSan OK   (passed 125, failed 0)
+
+OK  strlen_off_by_one                  ft_strlen      KILLED        FAIL: lengths 0..300 (guard page right after the NUL)
+OK  isdigit_returns_8                  ft_isdigit     KILLED        FAIL: returns exactly 1 or 0 for 0..255 and EOF
+OK  isalpha_missing_upper              ft_isalpha     KILLED        FAIL: returns exactly 1 or 0 for 0..255 and EOF
+OK  toupper_off_by_one                 ft_toupper     KILLED        FAIL: converts only the right letters for 0..255 and EOF
+OK  strchr_no_nul_search               ft_strchr      KILLED        FAIL: every byte value on assorted strings (incl. NUL terminator)
+OK  strncmp_signed_chars               ft_strncmp     KILLED        FAIL: sign of result vs libc (n = 0, 1, ..., SIZE_MAX; bytes >= 0x80 are unsigned)
+OK  strnstr_overread                   ft_strnstr     KILLED        CRASH: all haystack/needle pairs for len = 0..strlen+2
+OK  strlcpy_no_terminator              ft_strlcpy     KILLED        FAIL: return value, truncation, NUL termination, no padding
+OK  strlcat_wrong_return               ft_strlcat     KILLED        FAIL: return value, truncation, NUL termination, dst longer than size
+OK  memset_wrong_return                ft_memset      KILLED        FAIL: n = 0..70, several fill values, alignments, canaries, return value
+OK  memcpy_writes_one_extra            ft_memcpy      KILLED        CRASH: 1 MiB copy between guarded buffers
+OK  memmove_always_forward             ft_memmove     KILLED        FAIL: every (src, dst, n) overlap combination in a 128-byte buffer
+OK  memchr_signed_compare              ft_memchr      KILLED        FAIL: embedded NULs, 0xFF, c converted to unsigned char, never reads past n
+OK  calloc_not_zeroed                  ft_calloc      KILLED        FAIL: block is fully zeroed (heap is pre-filled with 0xA5)
+OK  calloc_no_overflow_check           ft_calloc      KILLED        FAIL: nmemb * size overflow returns NULL (man page)
+OK  strdup_no_terminator               ft_strdup      KILLED        CRASH: lengths 0..64: equal content, distinct block, independent of the original
+OK  atoi_ignores_minus                 ft_atoi        KILLED        FAIL: signs, whitespace, junk, leading zeros, INT_MIN/INT_MAX (vs libc)
+OK  itoa_int_overflow                  ft_itoa        KILLED        FAIL: boundary values incl. INT_MIN, INT_MAX, powers of ten
+OK  substr_no_clamp                    ft_substr      KILLED        CRASH: regular substrings, len clamped to the end of the string
+OK  substr_no_terminator               ft_substr      KILLED        CRASH: regular substrings, len clamped to the end of the string
+OK  strjoin_returns_s2_when_s1_empty   ft_strjoin     KILLED        MEMORY: empty/non-empty combinations; result is always a NEW block
+OK  split_leaks_on_failure             ft_split       KILLED        LEAK: failing at every malloc: NULL returned and everything already allocated is freed [inject]
+OK  split_array_too_small              ft_split       KILLED        CRASH: regular separators; every string is its own freeable allocation
+OK  strmapi_wrong_index                ft_strmapi     KILLED        FAIL: f gets (index, char) once per character in order; result is a new string
+OK  striteri_passes_copy               ft_striteri    KILLED        FAIL: f gets (index, &s[index]) in order and can modify the string in place
+OK  putendl_no_newline                 ft_putendl_fd  KILLED        FAIL: writes the string followed by exactly one newline
+OK  putnbr_int_overflow                ft_putnbr_fd   KILLED        FAIL: boundary values incl. INT_MIN and INT_MAX (vs snprintf)
+OK  lstadd_back_drops_node             ft_lstadd_back KILLED        FAIL: empty list, then several nodes: appended in order
+OK  lstdelone_frees_next               ft_lstdelone   KILLED        CRASH: del called once with the content, node freed, next node left alone
+OK  lstclear_skips_del                 ft_lstclear    KILLED        FAIL: lists of 1, 2, 10, 1000: del once per node, all nodes freed, *lst == NULL
+OK  lstmap_leaks_content_on_failure    ft_lstmap      KILLED        FAIL: failing at every malloc: NULL, results released via del, partial list freed [inject]
+OK  lstsize_off_by_one                 ft_lstsize     KILLED        FAIL: lists of 1, 2, 10, 1000 nodes
+OK  lstclear_leaks_nodes               ft_lstclear    KILLED        LEAK: lists of 1, 2, 10, 1000: del once per node, all nodes freed, *lst == NULL
+OK  lstclear_double_free               ft_lstclear    KILLED        CRASH: lists of 1, 2, 10, 1000: del once per node, all nodes freed, *lst == NULL
+OK  split_ignores_trailing_delims      ft_split       KILLED        FAIL: regular separators; every string is its own freeable allocation
+OK  strtrim_returns_s1_when_nothing_to_trim ft_strtrim     KILLED        MEMORY: nothing to trim, empty set, empty string, everything trimmed
+OK  lstnew_uninitialised_next          ft_lstnew      KILLED        FAIL: content stored by pointer (not copied), next == NULL, distinct nodes
+OK  strlcpy_overruns_size              ft_strlcpy     KILLED        FAIL: return value, truncation, NUL termination, no padding
+
+mutants caught: 38/38
+SELF-TEST PASSED
