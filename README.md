@@ -118,3 +118,5 @@ prtest                  launcher            prtest_core/   Python (cli, project 
 harness/                C harness: run.c (fork runner), alloc.c (allocator/guards/injection), libft/t_*.c (tests)
 selftest/               golden reference + mutants + runner   examples/   broken sample project   docs/DESIGN.md
 ```
+
+_Last updated: 2026-11-03_
