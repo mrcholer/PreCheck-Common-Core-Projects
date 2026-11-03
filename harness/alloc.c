@@ -20,6 +20,9 @@ void	*__wrap_calloc(size_t n, size_t m);
 
 int			pt_fail_at;
 int			pt_cnt;
+int			pt_front;
+int			pt_sticky;
+unsigned char	pt_poison = 0xA5;
 static int	g_armed, g_cb, g_fired;
 
 typedef struct
@@ -85,7 +88,7 @@ static void mem_fail(const char *msg)
 }
 
 /* A block of n bytes whose last byte touches a PROT_NONE page; a PROT_NONE page precedes it too. */
-static void *guard_map(size_t n, void **base, size_t *maplen)
+static void *guard_map(size_t n, void **base, size_t *maplen, int front)
 {
 	size_t	data, total;
 	char	*m;
@@ -101,7 +104,7 @@ static void *guard_map(size_t n, void **base, size_t *maplen)
 	mprotect(m + PG + data, PG, PROT_NONE);
 	*base = m;
 	*maplen = total;
-	return (m + PG + data - n);
+	return (front ? m + PG : m + PG + data - n);
 }
 
 void *__wrap_malloc(size_t n)
@@ -115,7 +118,7 @@ void *__wrap_malloc(size_t n)
 	{
 		pt_cnt++;
 		pt_sh->total_allocs = pt_cnt;
-		if (pt_fail_at && pt_cnt == pt_fail_at)
+		if (pt_fail_at && (pt_cnt == pt_fail_at || (pt_sticky && pt_cnt > pt_fail_at)))
 		{
 			g_fired = 1;
 			return (NULL);
@@ -127,7 +130,7 @@ void *__wrap_malloc(size_t n)
 	p = NULL;
 	if (kind == K_GUARD && g_guard_total < GUARD_LIMIT)
 	{
-		p = guard_map(n, &base, &maplen);
+		p = guard_map(n, &base, &maplen, 0);
 		g_guard_total++;
 		if (p)
 		{
@@ -135,7 +138,7 @@ void *__wrap_malloc(size_t n)
 			if (pad > 16)
 				pad = 16;
 			memset((char *)p - pad, 0x5C, pad);
-			memset(p, 0xA5, n);
+			memset(p, pt_poison, n);
 		}
 	}
 	if (!p && kind != K_PLAIN)
@@ -146,7 +149,7 @@ void *__wrap_malloc(size_t n)
 			return (NULL);
 		memset(base, 0x5C, 16);
 		p = (char *)base + 16;
-		memset(p, 0xA5, n);
+		memset(p, pt_poison, n);
 		memset((char *)p + n, 0x5C, 16);
 	}
 	if (!p)
@@ -275,7 +278,8 @@ void *pt_gb_alloc(size_t n)
 
 	if (g_ngb >= 4096)
 		pt_finish(PT_RC_FAIL, "(harness)", "", "internal error: too many guarded buffers", "");
-	p = guard_map(n, &base, &len);
+	pt_sh->used_gb = 1;
+	p = guard_map(n, &base, &len, pt_front);
 	if (!p)
 		pt_finish(PT_RC_FAIL, "(harness)", "", "internal error: cannot map guarded buffer", "");
 	g_gb[g_ngb].base = base;
@@ -301,6 +305,36 @@ void *pt_gb_mem(const void *src, size_t n)
 	if (n)
 		memcpy(p, src, n);
 	return (p);
+}
+
+void pt_gb_protect(void *p)
+{
+	for (size_t i = 0; i < g_ngb; i++)
+		if ((char *)p >= (char *)g_gb[i].base + PG && (char *)p < (char *)g_gb[i].base + g_gb[i].len - PG)
+			mprotect((char *)g_gb[i].base + PG, g_gb[i].len - 2 * PG, PROT_READ);
+}
+
+void *pt_gb_ro_mem(const void *src, size_t n)
+{
+	void	*p = pt_gb_mem(src, n);
+
+	pt_gb_protect(p);
+	return (p);
+}
+
+char *pt_gb_ro_str(const char *s)
+{
+	char	*p = pt_gb_str(s);
+
+	pt_gb_protect(p);
+	return (p);
+}
+
+size_t pt_alloc_size(const void *p)
+{
+	t_blk	*e = slot((void *)p, 0);
+
+	return (e && e->state == 1 ? e->size : (size_t)-1);
 }
 
 t_pt_cbuf pt_cb_new(size_t n, size_t off, int fill)
@@ -330,7 +364,7 @@ void pt_cb_check(t_pt_cbuf *c, const char *call)
 }
 
 /* ------------------------------------------------------------ allocation-failure sweep */
-static void relay(int s, char *msg, int k, int n)
+static void relay(int s, char *msg, int k, int n, int sticky)
 {
 	char	*f[4] = {msg, (char *)"", (char *)"", (char *)""};
 	char	*q;
@@ -348,24 +382,28 @@ static void relay(int s, char *msg, int k, int n)
 		f[i + 1] = q;
 	}
 	if (k > 0)
-		pt_finish(rc, pt_fmt("%s  [malloc #%d of %d made to fail]", f[0], k, n), f[1], f[2], f[3]);
+		pt_finish(rc, pt_fmt("%s  [malloc #%d of %d made to fail%s]", f[0], k, n, sticky ? ", and every later one too" : ""), f[1], f[2], f[3]);
 	pt_finish(rc, f[0], f[1], f[2], f[3]);
 }
 
 void pt_inject_sweep(void (*scen)(void))
 {
 	char	msg[4096];
-	int		s, n, k;
+	int		s, n, k, sticky;
 
 	pt_sh->total_allocs = 0;
+	pt_sticky = 0;
 	s = pt_run_child(scen, 0, msg, sizeof(msg));
 	if (s != S_PASS)
-		relay(s, msg, 0, 0);
+		relay(s, msg, 0, 0, 0);
 	n = pt_sh->total_allocs;
-	for (k = 1; k <= n; k++)
-	{
-		s = pt_run_child(scen, k, msg, sizeof(msg));
-		if (s != S_PASS)
-			relay(s, msg, k, n);
-	}
+	for (sticky = 0; sticky < 2; sticky++)
+		for (k = 1; k <= (sticky ? n - 1 : n); k++)
+		{
+			pt_sticky = sticky;
+			s = pt_run_child(scen, k, msg, sizeof(msg));
+			pt_sticky = 0;
+			if (s != S_PASS)
+				relay(s, msg, k, n, sticky);
+		}
 }

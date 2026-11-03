@@ -133,9 +133,10 @@ def render(results, opts, meta, elapsed):
         out.append("")
     c = counts(results)
     nfun = len({r.func for r in results if r.cat != "project"})
+    nchecks = sum(r.checks for r in results)
     out.append("Summary  passed %d · failed %d · warnings %d · skipped %d · missing %d%s   (%d functions, %.1f s)" % (
         c["passed"], c["failed"], c["warnings"], c["skipped"], c["missing"],
-        (" · probes %d" % c["info"]) if c["info"] else "", nfun, elapsed))
+        (" · probes %d" % c["info"]) if c["info"] else "", nfun, elapsed) + ("   · %s individual checks" % format(nchecks, ",") if nchecks else ""))
     bad = c["failed"] > 0 or (opts.strict and c["warnings"] > 0) or (c["missing"] > 0 and False)
     out.append("Result   " + (st.c("1;31", "FAIL") if bad else st.c("1;32", "PASS")))
     return "\n".join(out), (1 if bad else 0)

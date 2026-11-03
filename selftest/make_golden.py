@@ -534,4 +534,5 @@ re: fclean all
 .PHONY: all clean fclean re
 """
 open(os.path.join(D, "Makefile"), "w").write(mk)
+open(os.path.join(D, "README.md"), "w").write("*This project has been created as part of the 42 curriculum by golden.*\n\n## Description\nReference Libft used to validate prtest.\n\n## Instructions\nRun `make`.\n\n## Resources\nAI was used to write this reference implementation (it is a test fixture, not a submission).\n")
 print("golden written:", len(order), "functions")

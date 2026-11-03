@@ -8,11 +8,42 @@ prtest libft . --verbose            # list every test
 prtest libft . --failed-only        # hide passing functions
 ```
 
-Requirements: Linux, `cc`, `make`, `nm`, `ar`, Python ≥ 3.8 (standard library only).
+Default timeout is 10 s per test (`--timeout`). Requirements: Linux, `cc`, `make`, `nm`, `ar`, Python ≥ 3.8 (standard library only).
 Optional: `valgrind`, `norminette`. Install: `./install.sh` (symlink in `~/.local/bin`, no sudo).
 
 **It never touches your files.** Your repo is copied to `/tmp/prtest-XXXX`, *your* Makefile is run there,
 and the resulting `libft.a` is what gets tested. Nothing is fixed or rewritten for you.
+
+## How big is the test suite?
+
+About **440 named tests**; most are loops, so the reference library goes through **~52 million individual checks** in ~20 s
+(`--runs 3` ≈ 156 million with different seeds and heap-fill patterns). Four layers per function:
+
+1. **Behaviour tests**: the cases from the subject / man page (normal, edge, boundary).
+2. **Exhaustive tests** over small input spaces: every string over `{a,b}` up to length 9 x every search value (`strchr`), every `(src, dst, n)`
+   overlap (`memmove`), all 9 331 short strings over `{' ','+','-','0','5','a'}` (`atoi`), every integer in -100000..100000 (`itoa`), every
+   string over `{',','a','b'}` up to length 8 (`split`), every `(nmemb, size)` in 0..24 (`calloc`), all trim/set combinations (`strtrim`), ...
+3. **Randomized differential fuzzing** against libc or a reference model (fixed seed, `--seed` / `--runs`): up to 100 000 inputs per function,
+   strings up to 5000 bytes, all alignments, bytes 0x80..0xFF, page-boundary sweeps.
+4. **Deep tests** for the bugs that normal tests miss:
+   * **Guard page BEFORE the data**: every test that uses guarded buffers is run a second time with the buffer at the *start* of its page
+     (`[front guard]` variants). Catches reading/writing before the start (`s1[-1]` in `ft_strtrim("")`, backwards scans in `ft_strrchr`, ...).
+   * **Read-only memory**: `const` inputs (and whole `t_list` nodes for `ft_lstsize/last/iter/map`) live in `PROT_READ` pages; any write crashes.
+   * **Hidden state / re-entrancy**: 100-400 results alive at once must stay correct and distinct (no static buffers), results must not alias
+     the input (input overwritten afterwards), callbacks that call the same function again (`strmapi`-in-`strmapi`, `lstclear`-in-`del`, ...),
+     and `nm` flags mutable `static` variables.
+   * **Huge inputs with a 1 MiB stack**: 8 MiB strings, 32 MiB blocks, 100 000-node lists. Recursive implementations crash,
+     quadratic ones time out; indices on 300 000-char strings catch `unsigned short` truncation.
+   * **Aliasing**: `ft_strjoin(s, s)`, `ft_strtrim(s, s)`, `ft_strncmp(s, s, n)`, `ft_memmove(p, p, n)`, ...
+   * **Cascading allocation failure**: every allocating function is run with malloc #k failing, and also with #k *and every later malloc*
+     failing (an error path that itself allocates crashes here).
+   * **Write errors**: `put*_fd` on a closed pipe must return instead of retrying forever.
+   * **Over-allocation** (`ft_substr(s, 1, 1000000)` must not malloc a megabyte), exact byte-difference results of `strncmp/memcmp` (man page).
+5. **Project checks**: Makefile (relink, `-j8`, `make -C`, stale `.o` after editing a `.c` or `libft.h`, `fclean` leftovers, wildcards),
+   unused files / folders, README format, libc calls in the source, hidden statics, globals, forbidden externals, header vs subject prototypes,
+   norminette (or an approximate "Norm-lite" when it is not installed).
+
+Not tested on purpose: anything that is undefined behaviour (see tiers below).
 
 ## How it works
 
@@ -50,6 +81,8 @@ Exit codes: `0` ok, `1` failures, `2` usage / build / detection error.
 
 ## Other options
 
+`--runs N` repeats the suite with different seeds and heap-poison bytes (0xA5, 0xFF, 0x01, ...); `--opt 2|3` also tests your sources
+recompiled at -O2/-O3 (finds optimizer-dependent bugs); `--no-front` skips the guard-before-data pass;
 `--sanitize` recompiles your `ft_*.c` with ASan+UBSan and tests those (finds UB in *your* code on valid inputs);
 `--valgrind` runs the harness under valgrind; `--stress` adds heavy tests (200 000-node lists);
 `--seed N` reproduces a random run; `--json`; `--no-color`; `--no-norm`; `--list`; `--keep-sandbox`.
@@ -59,8 +92,8 @@ Exit codes: `0` ok, `1` failures, `2` usage / build / detection error.
 ```
 prtest --selftest
 ```
-Runs a known-good reference Libft (`selftest/golden/`, must pass, also under ASan/UBSan) and **38 mutants**
-(`selftest/mutants.py`: off-by-one, missing NUL, leak-on-failure, unsigned/signed mix-ups, …). Every mutant must be caught.
+Runs a known-good reference Libft (`selftest/golden/`, must pass, also under ASan/UBSan) and **70 mutants**
+(`selftest/mutants.py`: off-by-one, missing NUL, leak-on-failure, unsigned/signed mix-ups, and bugs that only trigger for one value, for long inputs, or for a 0xFF delimiter). Every mutant must be caught.
 `examples/broken_libft/` is a project with several deliberate bugs; try `prtest libft examples/broken_libft`.
 
 > **42 note:** `selftest/golden/` is a complete reference implementation used *only* to validate the tester.

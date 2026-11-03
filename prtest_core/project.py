@@ -48,7 +48,7 @@ def make_sandbox(src, keep=False):
 
 
 # ---------------------------------------------------------------- Makefile
-def makefile_checks(proj, results):
+def makefile_checks(proj, results, initial=None):
     """Runs the student's Makefile inside the sandbox. Returns (ok_to_continue, log)."""
     mk_text = (proj / "Makefile").read_text(errors="replace")
     lib = proj / "libft.a"
@@ -105,10 +105,42 @@ def makefile_checks(proj, results):
     rc, _ = run(["make", "fclean"], cwd=proj)
     results.append(PR("`make fclean` removes libft.a", "PASS" if rc == 0 and not lib.exists() else "FAIL",
                       "libft.a removed", "libft.a still present" if lib.exists() else "exit %d" % rc))
+    if initial is not None:
+        left = sorted(initial_files(proj) - initial)
+        results.append(PR("`make fclean` leaves no build files behind", "FAIL" if left else "PASS", "the tree as you submitted it",
+                          "left behind: " + ", ".join(left[:8])) if left else PR("`make fclean` leaves no build files behind", "PASS"))
     rc, out = run(["make", "re"], cwd=proj, timeout=240)
     results.append(PR("`make re` rebuilds", "PASS" if rc == 0 and lib.is_file() else "FAIL", "libft.a rebuilt", tail(out, 5)))
     rc, out = run(["make", "all"], cwd=proj)
     results.append(PR("`make all` works", "PASS" if rc == 0 and lib.is_file() else "FAIL", "exit 0", tail(out, 5)))
+    # --- deeper behaviour
+    srcs = sorted(proj.glob("ft_*.c"))
+    if srcs:
+        tgt = srcs[0]
+        obj = proj / (tgt.stem + ".o")
+        if obj.is_file():
+            import time
+            before = obj.stat().st_mtime_ns
+            time.sleep(0.05)
+            os.utime(tgt, None)
+            run(["make"], cwd=proj)
+            ok = obj.stat().st_mtime_ns != before if obj.is_file() else True
+            results.append(PR("editing a .c file triggers a rebuild", "PASS" if ok else "FAIL", "%s.o rebuilt" % tgt.stem, "stale object kept", "the .o rule must depend on its .c file"))
+            snap = {o: o.stat().st_mtime_ns for o in proj.glob("*.o")}
+            time.sleep(0.05)
+            os.utime(proj / "libft.h", None)
+            run(["make"], cwd=proj)
+            changed = any(o.is_file() and o.stat().st_mtime_ns != t for o, t in snap.items())
+            results.append(PR("editing libft.h triggers a rebuild", "PASS" if changed else "WARN", "objects rebuilt", "nothing rebuilt",
+                              "add libft.h as a dependency of the .o files (otherwise header changes are silently ignored)"))
+    rc, out = run(["make", "fclean"], cwd=proj)
+    rc, out = run(["make", "-j8"], cwd=proj, timeout=240)
+    results.append(PR("`make -j8` (parallel) works", "PASS" if rc == 0 and lib.is_file() else "FAIL", "libft.a built in parallel", tail(out, 6),
+                      "a race between rules (e.g. fclean/all in one command, or the archive rule listing no prerequisites)"))
+    run(["make", "fclean"], cwd=proj)
+    rc, out = run(["make", "-C", str(proj), "all"], cwd=tempfile.gettempdir(), timeout=240)
+    results.append(PR("`make -C <dir>` works from another directory", "PASS" if rc == 0 and lib.is_file() else "FAIL", "libft.a built", tail(out, 6)))
+    rc, out = run(["make", "re"], cwd=proj, timeout=240)
     return lib.is_file(), log
 
 
@@ -119,6 +151,7 @@ _NM = re.compile(r"^(?P<ar>[^:]+):(?P<mem>[^:]+):\s*(?P<addr>[0-9a-fA-F]*)\s+(?P
 def nm_analysis(proj):
     rc, out = run(["nm", "-A", "libft.a"], cwd=proj)
     defined, undef, data = {}, {}, {}
+    local = {}
     for line in out.splitlines():
         m = _NM.match(line)
         if not m:
@@ -130,6 +163,9 @@ def nm_analysis(proj):
             undef.setdefault(mem, set()).add(sym)
         elif t in "DBRCGSV":
             data.setdefault(mem, set()).add(sym)
+        elif t in "bd":
+            local.setdefault(mem, set()).add(sym)
+    nm_analysis.local = local
     return defined, undef, data, rc
 
 
@@ -155,6 +191,12 @@ def static_checks(proj, results):
                       "exported: " + ", ".join(helpers[:8]), "make helper functions `static` (subject, IV.1)") if helpers else PR("helper functions are static", "PASS"))
     gl = sorted(s for syms in data.values() for s in syms)
     results.append(PR("no global variables", "FAIL" if gl else "PASS", "none", "global data: " + ", ".join(gl[:8]), "global variables are forbidden") if gl else PR("no global variables", "PASS"))
+    loc = sorted("%s: %s" % (m, s) for m, syms in getattr(nm_analysis, "local", {}).items() for s in syms)
+    if loc:
+        results.append(PR("no static (hidden-state) variables", "WARN", "no mutable static data", "; ".join(loc[:5]),
+                          "a `static` variable inside a function keeps state between calls (breaks re-entrancy / repeated calls)"))
+    else:
+        results.append(PR("no static (hidden-state) variables", "PASS"))
     # forbidden externals
     viol = []
     for mem, syms in undef.items():
@@ -212,8 +254,110 @@ def header_checks(proj, results, present):
 def norm_check(proj, results):
     exe = shutil.which("norminette")
     if not exe:
-        results.append(PR("norminette", "SKIP", "", "norminette not installed"))
+        norm_lite(proj, results)
         return
     rc, out = run([exe], cwd=proj, timeout=120)
     errs = [l for l in out.splitlines() if "Error" in l and "Error!" not in l]
     results.append(PR("Norm (norminette)", "PASS" if rc == 0 else "FAIL", "OK", "%d error(s)" % len(errs), "\n".join(errs[:5])))
+
+
+# ---------------------------------------------------------------- repo hygiene / source scan
+ALLOWED_ROOT = {"Makefile", "libft.h", "README.md", ".gitignore", ".gitattributes", "LICENSE", ".git"}
+LIBC_CALLS = set("""strlen strcpy strncpy strcat strncat strcmp strncmp strchr strrchr strstr strnstr strdup strlcpy strlcat memcpy memmove memset
+memcmp memchr bzero calloc realloc atoi atol strtol strtoul printf fprintf sprintf snprintf dprintf puts putchar putc fputs exit abort
+toupper tolower isalpha isdigit isalnum isascii isprint isspace getenv system fopen fclose read open close perror strerror abs labs
+qsort rand srand time sleep usleep""".split())
+
+
+def _strip(text):
+    text = re.sub(r"/\*.*?\*/", lambda m: "\n" * m.group(0).count("\n"), text, flags=re.S)
+    text = re.sub(r"//[^\n]*", "", text)
+    text = re.sub(r'"(\\.|[^"\\\n])*"', '""', text)
+    text = re.sub(r"'(\\.|[^'\\\n])+'", "'x'", text)
+    return text
+
+
+def initial_files(proj):
+    return {str(p.relative_to(proj)) for p in proj.rglob("*") if p.is_file()}
+
+
+def hygiene_checks(proj, results):
+    names = sorted(p.name for p in proj.iterdir())
+    extra = [n for n in names if n not in ALLOWED_ROOT and not re.fullmatch(r"ft_\w+\.c", n)]
+    results.append(PR("no unused files at the repo root", "WARN" if extra else "PASS", "only Makefile, libft.h, README.md, ft_*.c",
+                      "also present: " + ", ".join(extra[:8]), "the subject forbids submitting unused files (tests, main.c, binaries, folders)") if extra else PR("no unused files at the repo root", "PASS"))
+    nested = [str(p.relative_to(proj)) for p in proj.rglob("ft_*.c") if p.parent != proj]
+    results.append(PR("every ft_*.c is at the repo root", "FAIL", "all files at the root", ", ".join(nested[:5]), "move them to the root of the repository") if nested else PR("every ft_*.c is at the repo root", "PASS"))
+    mk = (proj / "Makefile").read_text(errors="replace")
+    live = "\n".join(l for l in mk.splitlines() if not l.lstrip().startswith("#"))
+    if re.search(r"\$\(wildcard|\*\.c\b", live):
+        results.append(PR("Makefile lists source files explicitly", "WARN", "explicit file list", "wildcard used", "wildcards are not allowed by the 42 rules"))
+    else:
+        results.append(PR("Makefile lists source files explicitly", "PASS"))
+    srcs = sorted(proj.glob("ft_*.c"))
+    unlisted = [s.name for s in srcs if s.name not in mk and s.stem not in mk]
+    if unlisted:
+        results.append(PR("every ft_*.c is listed in the Makefile", "WARN", "all sources listed", "not listed: " + ", ".join(unlisted[:6])))
+    rd = proj / "README.md"
+    if not rd.is_file():
+        results.append(PR("README.md present with the required content", "FAIL", "README.md at the repo root", "missing", "see Chapter V of the subject"))
+    else:
+        t = rd.read_text(errors="replace")
+        first = t.strip().splitlines()[0] if t.strip() else ""
+        miss = []
+        if not re.fullmatch(r"[*_]This project has been created as part of the 42 curriculum by .+[*_]\.?", first.strip()):
+            miss.append("first line must be the italic sentence \"This project has been created as part of the 42 curriculum by <login>\"")
+        for sec in ("Description", "Instructions", "Resources"):
+            if not re.search(r"^#+\s*%s\b" % sec, t, flags=re.I | re.M):
+                miss.append('missing "%s" section' % sec)
+        if "AI" not in t and "ai " not in t.lower():
+            miss.append("Resources section should say how AI was used (or that it was not)")
+        results.append(PR("README.md present with the required content", "WARN" if miss else "PASS", "Chapter V of the subject", "; ".join(miss)) if miss else PR("README.md present with the required content", "PASS"))
+    hits = []
+    for s in srcs:
+        code = _strip(s.read_text(errors="replace"))
+        for i, line in enumerate(code.splitlines(), 1):
+            for m in re.finditer(r"\b([A-Za-z_]\w*)\s*\(", line):
+                if m.group(1) in LIBC_CALLS:
+                    hits.append("%s:%d %s()" % (s.name, i, m.group(1)))
+    results.append(PR("source does not call libc functions", "WARN" if hits else "PASS", "only malloc/free/write where allowed",
+                      "; ".join(hits[:6]), "inside the library use your own ft_* versions") if hits else PR("source does not call libc functions", "PASS"))
+
+
+def norm_lite(proj, results):
+    """Approximate Norm checks used only when norminette is not installed."""
+    bad = []
+    for f in sorted(list(proj.glob("ft_*.c")) + [proj / "libft.h"]):
+        if not f.is_file():
+            continue
+        raw = f.read_text(errors="replace").splitlines()
+        code = _strip(f.read_text(errors="replace")).splitlines()
+        nfunc = 0
+        for i, line in enumerate(raw, 1):
+            if len(line.expandtabs(4)) > 80:
+                bad.append("%s:%d line longer than 80 columns" % (f.name, i))
+        for i, line in enumerate(code, 1):
+            for kw in ("for", "switch", "case", "goto", "do"):
+                if re.search(r"\b%s\b" % kw, line):
+                    bad.append("%s:%d forbidden keyword '%s'" % (f.name, i, kw))
+            if "?" in line:
+                bad.append("%s:%d ternary operator" % (f.name, i))
+        i = 0
+        while i < len(code):
+            if code[i] == "{" and f.suffix == ".c":
+                nfunc += 1
+                j = i + 1
+                while j < len(code) and code[j] != "}":
+                    j += 1
+                if j - i - 1 > 25:
+                    bad.append("%s:%d function longer than 25 lines (%d)" % (f.name, i + 1, j - i - 1))
+                hdr = code[i - 1] if i else ""
+                if hdr.count(",") > 3:
+                    bad.append("%s:%d more than 4 parameters" % (f.name, i))
+                i = j
+            i += 1
+        if nfunc > 5:
+            bad.append("%s: more than 5 functions in one file (%d)" % (f.name, nfunc))
+    results.append(PR("Norm-lite (approximate; norminette not installed)", "WARN" if bad else "PASS", "no violations found",
+                      "\n".join(bad[:6]) + ("\n... %d more" % (len(bad) - 6) if len(bad) > 6 else ""),
+                      "install norminette for the real check") if bad else PR("Norm-lite (approximate; norminette not installed)", "PASS"))

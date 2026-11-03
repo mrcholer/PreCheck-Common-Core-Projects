@@ -1,8 +1,13 @@
 prtest 0.1.0 · libft (subject 19.3) · /home/claude/prtest/selftest/golden
-sandbox /tmp/prtest-09focb94 · cc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0 · seed 0x2f9c41aa
+sandbox /tmp/prtest-l_6hxwmd · cc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0 · seed 0x2f9c41aa
 
 Project
   ✓ detected as Libft
+  ✓ no unused files at the repo root
+  ✓ every ft_*.c is at the repo root
+  ✓ Makefile lists source files explicitly
+  ✓ README.md present with the required content
+  ✓ source does not call libc functions
   ✓ compiler is cc
   ✓ compiles with -Wall -Wextra -Werror
   ✓ library built with ar (not libtool)
@@ -10,11 +15,17 @@ Project
   ✓ second `make` does not relink
   ✓ `make clean` removes objects, keeps libft.a
   ✓ `make fclean` removes libft.a
+  ✓ `make fclean` leaves no build files behind
   ✓ `make re` rebuilds
   ✓ `make all` works
+  ✓ editing a .c file triggers a rebuild
+  ✓ editing libft.h triggers a rebuild
+  ✓ `make -j8` (parallel) works
+  ✓ `make -C <dir>` works from another directory
   ✓ libft.a defines the required functions
   ✓ helper functions are static
   ✓ no global variables
+  ✓ no static (hidden-state) variables
   ✓ only allowed external functions are used
   ✓ libft.h exists at the repo root
   ✓ no `restrict` in prototypes
@@ -24,55 +35,55 @@ Project
   ✓ prototypes in libft.h match the subject (v19.3)
 
  ctype
-  ✓ ft_isalpha         2/2
-  ✓ ft_isdigit         2/2
-  ✓ ft_isalnum         2/2
-  ✓ ft_isascii         2/2
-  ✓ ft_isprint         2/2
-  ✓ ft_toupper         2/2
-  ✓ ft_tolower         2/2
+  ✓ ft_isalpha         3/3
+  ✓ ft_isdigit         3/3
+  ✓ ft_isalnum         3/3
+  ✓ ft_isascii         3/3
+  ✓ ft_isprint         3/3
+  ✓ ft_toupper         4/4
+  ✓ ft_tolower         4/4
  string
-  ✓ ft_strlen          3/3
-  ✓ ft_strchr          3/3
-  ✓ ft_strrchr         3/3
-  ✓ ft_strncmp         3/3
-  ✓ ft_strnstr         2/2
-  ✓ ft_strlcpy         1/1
-  ✓ ft_strlcat         1/1
+  ✓ ft_strlen          14/14
+  ✓ ft_strchr          14/14
+  ✓ ft_strrchr         14/14
+  ✓ ft_strncmp         16/16
+  ✓ ft_strnstr         12/12
+  ✓ ft_strlcpy         10/10
+  ✓ ft_strlcat         10/10
  memory
-  ✓ ft_memset          2/2
-  ✓ ft_bzero           1/1
-  ✓ ft_memcpy          2/2
-  ✓ ft_memmove         2/2
-  ✓ ft_memchr          1/1
-  ✓ ft_memcmp          2/2
-  ✓ ft_calloc          5/5
-  ✓ ft_strdup          2/2
+  ✓ ft_memset          10/10
+  ✓ ft_bzero           8/8
+  ✓ ft_memcpy          12/12
+  ✓ ft_memmove         12/12
+  ✓ ft_memchr          10/10
+  ✓ ft_memcmp          13/13
+  ✓ ft_calloc          12/12
+  ✓ ft_strdup          12/12
  convert
-  ✓ ft_atoi            2/2
-  ✓ ft_itoa            3/3
+  ✓ ft_atoi            14/14
+  ✓ ft_itoa            9/9
  alloc
-  ✓ ft_substr          4/4
-  ✓ ft_strjoin         3/3
-  ✓ ft_strtrim         3/3
-  ✓ ft_split           7/7
-  ✓ ft_strmapi         3/3
-  ✓ ft_striteri        2/2
+  ✓ ft_substr          22/22
+  ✓ ft_strjoin         18/18
+  ✓ ft_strtrim         18/18
+  ✓ ft_split           30/30
+  ✓ ft_strmapi         16/16
+  ✓ ft_striteri        10/10
  output
-  ✓ ft_putchar_fd      3/3
-  ✓ ft_putstr_fd       4/4
-  ✓ ft_putendl_fd      3/3
-  ✓ ft_putnbr_fd       3/3
+  ✓ ft_putchar_fd      6/6
+  ✓ ft_putstr_fd       11/11
+  ✓ ft_putendl_fd      7/7
+  ✓ ft_putnbr_fd       7/7
  list
-  ✓ ft_lstnew          3/3
-  ✓ ft_lstadd_front    1/1
-  ✓ ft_lstsize         2/2
-  ✓ ft_lstlast         2/2
-  ✓ ft_lstadd_back     1/1
-  ✓ ft_lstdelone       1/1
-  ✓ ft_lstclear        2/2
-  ✓ ft_lstiter         2/2
-  ✓ ft_lstmap          4/4
+  ✓ ft_lstnew          5/5
+  ✓ ft_lstadd_front    2/2
+  ✓ ft_lstsize         6/6
+  ✓ ft_lstlast         6/6
+  ✓ ft_lstadd_back     3/3
+  ✓ ft_lstdelone       3/3
+  ✓ ft_lstclear        7/7
+  ✓ ft_lstiter         7/7
+  ✓ ft_lstmap          11/11
 
-Summary  passed 125 · failed 0 · warnings 0 · skipped 0 · missing 0   (43 functions, 2.2 s)
+Summary  passed 451 · failed 0 · warnings 0 · skipped 0 · missing 0   (43 functions, 18.5 s)   · 51,990,187 individual checks
 Result   PASS

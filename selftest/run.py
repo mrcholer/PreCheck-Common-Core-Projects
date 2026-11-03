@@ -22,7 +22,8 @@ def _prtest(path, *extra):
 
 
 def _mutant(m):
-    mid, fname, old, new, func = m
+    mid, fname, old, new, func = m[:5]
+    level = m[5] if len(m) > 5 else "FAIL"
     d = Path(tempfile.mkdtemp(prefix="prtest-mut-"))
     try:
         shutil.copytree(HERE / "golden", d / "libft", ignore=shutil.ignore_patterns("*.o", "*.a"))
@@ -31,10 +32,11 @@ def _mutant(m):
         if old not in txt:
             return mid, func, "BROKEN-MUTANT", "pattern not found in " + fname
         f.write_text(txt.replace(old, new, 1))
-        data, rc = _prtest(d / "libft", "-f", func)
+        data, rc = _prtest(d / "libft", "-f", func, "--timeout", "3")
         if "error" in data:
             return mid, func, "ERROR", data["error"]
-        bad = [r for r in data["results"] if r["func"] == func and r["status"] in ("FAIL", "CRASH", "TIMEOUT", "LEAK", "MEMORY")]
+        kill = ("FAIL", "CRASH", "TIMEOUT", "LEAK", "MEMORY") + (("WARN",) if level == "WARN" else ())
+        bad = [r for r in data["results"] if r["func"] == func and r["status"] in kill]
         if bad:
             return mid, func, "KILLED", "%s: %s" % (bad[0]["status"], bad[0]["name"])
         proj_bad = [r for r in data["results"] if r["cat"] == "project" and r["status"] == "FAIL"]

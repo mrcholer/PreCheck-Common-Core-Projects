@@ -14,6 +14,7 @@ class Result:
     expected: str = ""
     actual: str = ""
     hint: str = ""
+    checks: int = 0
 
     @property
     def failing(self):

@@ -13,6 +13,10 @@ from .results import Result, project_result
 from .util import run, tail
 
 
+POISONS = [0xA5, 0xFF, 0x01, 0x7F, 0x5A, 0xC3]
+RANK = {"PASS": 0, "INFO": 1, "WARN": 2, "FAIL": 3, "LEAK": 4, "MEMORY": 4, "TIMEOUT": 5, "CRASH": 5}
+
+
 def parse_args(argv):
     p = argparse.ArgumentParser(prog="prtest", description="Local tester for 42 projects (currently: libft). Never modifies your sources.")
     p.add_argument("target", nargs="*", help="[libft] [path]   (default: libft in .)")
@@ -25,8 +29,11 @@ def parse_args(argv):
     p.add_argument("--stress", action="store_true", help="run heavy tests (huge lists)")
     p.add_argument("--sanitize", action="store_true", help="recompile your ft_*.c with ASan+UBSan and test those")
     p.add_argument("--valgrind", action="store_true", help="run the harness under valgrind (if installed)")
+    p.add_argument("--runs", type=int, default=1, help="repeat the whole suite N times with different seeds and heap-fill patterns (deeper fuzzing)")
+    p.add_argument("--opt", choices=["1", "2", "3", "s"], help="also test your sources recompiled with -O<level> (exposes optimizer-dependent / UB bugs)")
+    p.add_argument("--no-front", action="store_true", help="skip the second pass that puts guard pages BEFORE buffers")
     p.add_argument("--seed", type=lambda s: int(s, 0), default=0x2F9C41AA)
-    p.add_argument("--timeout", type=int, default=3, help="seconds per test (default 3)")
+    p.add_argument("--timeout", type=int, default=10, help="seconds per test (default 10)")
     p.add_argument("--json", action="store_true")
     p.add_argument("--no-color", action="store_true")
     p.add_argument("--no-norm", action="store_true", help="do not run norminette even if installed")
@@ -66,6 +73,8 @@ def main(argv=None):
         funcs = norm_funcs(o.function)
     except ValueError as e:
         return die(str(e))
+    if o.opt and o.sanitize:
+        return die("--opt and --sanitize cannot be combined")
     cats = [c for c in sum([x.split(",") for x in o.category], []) if c]
     for c in cats:
         if c not in spec.CATEGORIES + ["project"]:
@@ -106,7 +115,10 @@ def main(argv=None):
         want_tests = not cats or any(c != "project" for c in cats)
         if not funcs and want_project:
             results.append(project_result("detected as Libft", "PASS", "", ", ".join(info["why"])))
-        ok, log = project.makefile_checks(proj, results)
+        init = project.initial_files(proj)
+        if not funcs and want_project:
+            project.hygiene_checks(proj, results)
+        ok, log = project.makefile_checks(proj, results, init)
         if not ok:
             for r in results:
                 pass
@@ -121,7 +133,7 @@ def main(argv=None):
             results = [r for r in results if r.status in ("FAIL",)]   # filters: only surface project failures
         tests = []
         if want_tests:
-            binary, text = harness.build(root, proj, present, sanitize=o.sanitize, strip_main=project.has_main[0])
+            binary, text = harness.build(root, proj, present, sanitize=o.sanitize, strip_main=project.has_main[0], opt=o.opt)
             if not binary:
                 text2, _ = report.render(results, o, _meta(root, info, o), time.time() - t0)
                 print(text2.rsplit("\nSummary", 1)[0])
@@ -135,10 +147,27 @@ def main(argv=None):
                 results.append(project_result("valgrind", "SKIP", "", "valgrind not installed"))
                 o.valgrind = False
             if runnable:
-                res, err = harness.run_harness(binary, root, runnable, None, o.probe_ub, o.stress, o.seed, o.timeout, o.sanitize, o.valgrind)
-                tests += res
-                if err and not res:
-                    return die(err)
+                merged = {}
+                for i in range(max(1, o.runs)):
+                    seed = (o.seed + i * 0x9E3779B9) & 0xFFFFFFFF
+                    poison = POISONS[i % len(POISONS)] if o.runs > 1 else None
+                    res, err = harness.run_harness(binary, root, runnable, None, o.probe_ub, o.stress, seed, o.timeout, o.sanitize,
+                                                   o.valgrind, poison=poison, front=not o.no_front)
+                    if err and not res:
+                        return die(err)
+                    for r in res:
+                        k = (r.func, r.name)
+                        old = merged.get(k)
+                        if o.runs > 1 and r.status not in ("PASS", "INFO"):
+                            r.hint = (r.hint + "  " if r.hint else "") + "[run %d: seed 0x%x, heap poison 0x%02x]" % (i + 1, seed, poison)
+                        if old is None:
+                            merged[k] = r
+                        else:
+                            old.checks += r.checks
+                            if RANK.get(r.status, 0) > RANK.get(old.status, 0):
+                                r.checks = old.checks
+                                merged[k] = r
+                tests += list(merged.values())
         allres = results + tests
         meta = _meta(root, info, o)
         if o.json:

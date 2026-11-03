@@ -1,0 +1,178 @@
+prtest 0.1.0 · libft (subject 19.3) · /tmp/messy
+sandbox /tmp/prtest-17j8cdxs · cc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0 · seed 0x2f9c41aa
+
+Project
+  ✓ detected as Libft
+  ! no unused files at the repo root
+       expected  only Makefile, libft.h, README.md, ft_*.c
+       actual    also present: a.out, main.c, tests
+       hint      the subject forbids submitting unused files (tests, main.c, binaries, folders)
+  ✗ every ft_*.c is at the repo root
+       expected  all files at the root
+       actual    tests/ft_extra.c
+       hint      move them to the root of the repository
+  ! Makefile lists source files explicitly
+       expected  explicit file list
+       actual    wildcard used
+       hint      wildcards are not allowed by the 42 rules
+  ✗ README.md present with the required content
+       expected  README.md at the repo root
+       actual    missing
+       hint      see Chapter V of the subject
+  ! source does not call libc functions
+       expected  only malloc/free/write where allowed
+       actual    ft_atoi.c:8 printf()
+       hint      inside the library use your own ft_* versions
+  ✓ compiler is cc
+  ✓ compiles with -Wall -Wextra -Werror
+  ✓ library built with ar (not libtool)
+  ✓ make builds libft.a at the repo root
+  ✓ second `make` does not relink
+  ✓ `make clean` removes objects, keeps libft.a
+  ✓ `make fclean` removes libft.a
+  ✗ `make fclean` leaves no build files behind
+       expected  the tree as you submitted it
+       actual    left behind: leftover.txt
+  ✓ `make re` rebuilds
+  ✓ `make all` works
+  ✓ editing a .c file triggers a rebuild
+  ! editing libft.h triggers a rebuild
+       expected  objects rebuilt
+       actual    nothing rebuilt
+       hint      add libft.h as a dependency of the .o files (otherwise header changes are silently ignored)
+  ✓ `make -j8` (parallel) works
+  ✓ `make -C <dir>` works from another directory
+  ✓ libft.a defines the required functions
+  ✓ helper functions are static
+  ✗ no global variables
+       expected  none
+       actual    global data: g_counter
+       hint      global variables are forbidden
+  ! no static (hidden-state) variables
+       expected  no mutable static data
+       actual    ft_strlen.o: i.0
+       hint      a `static` variable inside a function keeps state between calls (breaks re-entrancy / repeated calls)
+  ✗ only allowed external functions are used
+       expected  malloc/free/write only where listed
+       actual    ft_atoi.o uses puts
+       hint      printf/puts are not allowed (leftover debug print?)
+  ✓ libft.h exists at the repo root
+  ✓ no `restrict` in prototypes
+  ✓ include guard present
+  ✓ every implemented function is declared in libft.h
+  ✓ libft.h compiles alone, twice, and defines t_list{content,next}
+  ✓ prototypes in libft.h match the subject (v19.3)
+  ! Norm-lite (approximate; norminette not installed)
+       expected  no violations found
+       actual    ft_memcmp.c:11 line longer than 80 columns
+                 ft_split.c:28 function longer than 25 lines (28)
+                 ft_substr.c:17 ternary operator
+       hint      install norminette for the real check
+
+ ctype
+  ✓ ft_isalpha         3/3
+  ✓ ft_isdigit         3/3
+  ✓ ft_isalnum         3/3
+  ✓ ft_isascii         3/3
+  ✓ ft_isprint         3/3
+  ✓ ft_toupper         4/4
+  ✓ ft_tolower         4/4
+ string
+  ✓ ft_strlen          14/14
+  ✓ ft_strchr          14/14
+  ✓ ft_strrchr         14/14
+  ✓ ft_strncmp         16/16
+  ✓ ft_strnstr         12/12
+  ✓ ft_strlcpy         10/10
+  ✓ ft_strlcat         10/10
+ memory
+  ✓ ft_memset          10/10
+  ✓ ft_bzero           8/8
+  ✓ ft_memcpy          12/12
+  ✓ ft_memmove         12/12
+  ✓ ft_memchr          10/10
+  ✓ ft_memcmp          13/13
+  ✓ ft_calloc          12/12
+  ✓ ft_strdup          12/12
+ convert
+  ! ft_atoi            0/7   7 warning(s)
+  ✓ ft_itoa            9/9
+ alloc
+  ✓ ft_substr          22/22
+  ✓ ft_strjoin         18/18
+  ✓ ft_strtrim         18/18
+  ✓ ft_split           30/30
+  ✓ ft_strmapi         16/16
+  ✓ ft_striteri        10/10
+ output
+  ✓ ft_putchar_fd      6/6
+  ✓ ft_putstr_fd       11/11
+  ✓ ft_putendl_fd      7/7
+  ✓ ft_putnbr_fd       7/7
+ list
+  ✓ ft_lstnew          5/5
+  ✓ ft_lstadd_front    2/2
+  ✓ ft_lstsize         6/6
+  ✓ ft_lstlast         6/6
+  ✓ ft_lstadd_back     3/3
+  ✓ ft_lstdelone       3/3
+  ✓ ft_lstclear        7/7
+  ✓ ft_lstiter         7/7
+  ✓ ft_lstmap          11/11
+
+Failures
+ ✗ project › every ft_*.c is at the repo root   [spec]
+     expected  all files at the root
+     actual    tests/ft_extra.c
+     hint      move them to the root of the repository
+
+ ✗ project › README.md present with the required content   [spec]
+     expected  README.md at the repo root
+     actual    missing
+     hint      see Chapter V of the subject
+
+ ✗ project › `make fclean` leaves no build files behind   [spec]
+     expected  the tree as you submitted it
+     actual    left behind: leftover.txt
+
+ ✗ project › no global variables   [spec]
+     expected  none
+     actual    global data: g_counter
+     hint      global variables are forbidden
+
+ ✗ project › only allowed external functions are used   [spec]
+     expected  malloc/free/write only where listed
+     actual    ft_atoi.o uses puts
+     hint      printf/puts are not allowed (leftover debug print?)
+
+Warnings
+ ! ft_atoi › signs, whitespace, junk, leading zeros, INT_MIN/INT_MAX (vs libc)   [spec]
+     expected  no output on stdout/stderr
+     actual    162 byte(s) written (leftover debug print?)
+
+ ! ft_atoi › 5000 random in-range integers with random leading whitespace   [spec]
+     expected  no output on stdout/stderr
+     actual    30000 byte(s) written (leftover debug print?)
+
+ ! ft_atoi › exhaustive: all 9331 strings of length 0..5 over {' ', '+', '-', '0', '5', 'a'} vs libc   [spec]
+     expected  no output on stdout/stderr
+     actual    55986 byte(s) written (leftover debug print?)
+
+ ! ft_atoi › every single byte value as prefix/separator: "<c>7", "7<c>8", "<c>-7" (whitespace set must be exactly isspace)   [spec]
+     expected  no output on stdout/stderr
+     actual    4590 byte(s) written (leftover debug print?)
+
+ ! ft_atoi › fuzz: 30000 random numbers (<= 9 digits) with whitespace, signs, leading zeros and trailing junk   [spec]
+     expected  no output on stdout/stderr
+     actual    180000 byte(s) written (leftover debug print?)
+
+ ! ft_atoi › INT_MAX / INT_MIN with whitespace, signs and many leading zeros   [spec]
+     expected  no output on stdout/stderr
+     actual    60 byte(s) written (leftover debug print?)
+
+ ! ft_atoi › read-only inputs; a million leading zeros / spaces before the number   [spec]
+     expected  no output on stdout/stderr
+     actual    18 byte(s) written (leftover debug print?)
+
+Summary  passed 427 · failed 5 · warnings 13 · skipped 0 · missing 0   (43 functions, 27.8 s)   · 51,945,051 individual checks
+Result   FAIL

@@ -11,7 +11,7 @@
 t_pt_shared	*pt_sh;
 int			pt_stress;
 unsigned	pt_seed = 0x2f9c41aa;
-int			pt_timeout = 3;
+int			pt_timeout = 10;
 int			pt_passthru;
 int			pt_cur_tier = T_SPEC;
 static int	g_resfd = -1;
@@ -181,6 +181,9 @@ static void child_setup(int fail_at)
 	{
 		rl.rlim_cur = rl.rlim_max = 6UL << 30;
 		setrlimit(RLIMIT_AS, &rl);
+		getrlimit(RLIMIT_STACK, &rl);
+		rl.rlim_cur = 1UL << 20;   /* 1 MiB: deep recursion (e.g. recursive lstsize on 100000 nodes) crashes */
+		setrlimit(RLIMIT_STACK, &rl);
 	}
 	pt_fail_at = fail_at;
 	pt_cnt = 0;
@@ -301,11 +304,38 @@ static void sanitize_field(char *s)
 			*s = ' ';
 }
 
+static void emit(t_test *t, int s, char *msg, int front)
+{
+	char		*f[4], *q;
+	int			n = 0, i;
+	const char	*status;
+
+	if (t->tier == T_CONV && s != S_PASS)
+		s = S_WARN;
+	if (t->tier == T_UB)
+		s = S_INFO;
+	status = (const char *[]){"PASS", "FAIL", "WARN", "CRASH", "TIMEOUT", "LEAK", "MEMORY", "INFO"}[s];
+	f[0] = msg;
+	f[1] = f[2] = f[3] = (char *)"";
+	for (q = msg; *q && n < 3; q++)
+		if (*q == '\x1f')
+		{
+			*q = 0;
+			f[++n] = q + 1;
+		}
+	for (i = 0; i < 4; i++)
+		sanitize_field(f[i]);
+	printf("T\t%s\t%s\t%s%s\t%d\t%s\t%s\t%s\t%s\t%s\t%ld\n", t->func, t->cat, t->name, front ? " [front guard]" : "",
+		t->tier, status, f[0], f[1], f[2], f[3], pt_sh->checks);
+}
+
 int main(int argc, char **argv)
 {
+	int		front_on = 1;
+
 	const char	*funcs = NULL, *cats = NULL;
 	int			list = 0, probe = 0, i;
-	char		msg[4096], *f[4];
+	char		msg[4096];
 	size_t		k;
 
 	for (i = 1; i < argc; i++)
@@ -314,6 +344,8 @@ int main(int argc, char **argv)
 		else if (!strcmp(argv[i], "--probe-ub")) probe = 1;
 		else if (!strcmp(argv[i], "--stress")) pt_stress = 1;
 		else if (!strcmp(argv[i], "--passthrough")) pt_passthru = 1;
+		else if (!strcmp(argv[i], "--no-front")) front_on = 0;
+		else if (!strcmp(argv[i], "--poison") && i + 1 < argc) pt_poison = (unsigned char)strtoul(argv[++i], NULL, 0);
 		else if (!strcmp(argv[i], "--function") && i + 1 < argc) funcs = argv[++i];
 		else if (!strcmp(argv[i], "--category") && i + 1 < argc) cats = argv[++i];
 		else if (!strcmp(argv[i], "--seed") && i + 1 < argc) pt_seed = (unsigned)strtoul(argv[++i], NULL, 0);
@@ -325,7 +357,6 @@ int main(int argc, char **argv)
 	for (k = 0; k < g_ntests; k++)
 	{
 		t_test *t = &g_tests[k];
-		const char *status;
 		int s;
 
 		if (!in_list(funcs, t->func) || !in_list(cats, t->cat))
@@ -344,26 +375,21 @@ int main(int argc, char **argv)
 		pt_cur_tier = t->tier;
 		pt_sh->call[0] = 0;
 		pt_sh->hint[0] = 0;
+		pt_sh->checks = 0;
+		pt_sh->used_gb = 0;
+		pt_front = 0;
 		s = pt_run_child(t->fn, 0, msg, sizeof(msg));
-		if (t->tier == T_CONV && s != S_PASS)
-			s = S_WARN;
-		if (t->tier == T_UB)
-			s = S_INFO;
-		status = (const char *[]){"PASS", "FAIL", "WARN", "CRASH", "TIMEOUT", "LEAK", "MEMORY", "INFO"}[s];
-		f[0] = msg; f[1] = f[2] = f[3] = (char *)"";
+		emit(t, s, msg, 0);
+		if (s == S_PASS && front_on && pt_sh->used_gb && t->tier != T_UB)
 		{
-			char *q = msg;
-			int n = 0;
-			f[0] = q;
-			while (*q && n < 3)
-			{
-				if (*q == '\x1f') { *q = 0; f[++n] = q + 1; }
-				q++;
-			}
+			pt_sh->call[0] = 0;
+			pt_sh->hint[0] = 0;
+			pt_sh->checks = 0;
+			pt_front = 1;
+			s = pt_run_child(t->fn, 0, msg, sizeof(msg));
+			pt_front = 0;
+			emit(t, s, msg, 1);
 		}
-		for (i = 0; i < 4; i++)
-			sanitize_field(f[i]);
-		printf("T\t%s\t%s\t%s\t%d\t%s\t%s\t%s\t%s\t%s\n", t->func, t->cat, t->name, t->tier, status, f[0], f[1], f[2], f[3]);
 	}
 	return (0);
 }

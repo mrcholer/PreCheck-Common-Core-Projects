@@ -1,7 +1,7 @@
-prtest self-test: golden libft + 38 mutants
+prtest self-test: golden libft + 70 mutants
 
-golden libft              OK   (passed 125, failed 0, warnings 0)
-golden libft + ASan/UBSan OK   (passed 125, failed 0)
+golden libft              OK   (passed 451, failed 0, warnings 0)
+golden libft + ASan/UBSan OK   (passed 451, failed 0)
 
 OK  strlen_off_by_one                  ft_strlen      KILLED        FAIL: lengths 0..300 (guard page right after the NUL)
 OK  isdigit_returns_8                  ft_isdigit     KILLED        FAIL: returns exactly 1 or 0 for 0..255 and EOF
@@ -41,6 +41,38 @@ OK  split_ignores_trailing_delims      ft_split       KILLED        FAIL: regula
 OK  strtrim_returns_s1_when_nothing_to_trim ft_strtrim     KILLED        MEMORY: nothing to trim, empty set, empty string, everything trimmed
 OK  lstnew_uninitialised_next          ft_lstnew      KILLED        FAIL: content stored by pointer (not copied), next == NULL, distinct nodes
 OK  strlcpy_overruns_size              ft_strlcpy     KILLED        FAIL: return value, truncation, NUL termination, no padding
+OK  memcpy_drops_last_byte_when_n_gt_6000 ft_memcpy      KILLED        FAIL: 1 MiB copy between guarded buffers
+OK  lstsize_wrong_above_1200           ft_lstsize     KILLED        FAIL: grows one node at a time up to 1500; size and last checked at every step
+OK  strdup_truncates_long_strings      ft_strdup      KILLED        CRASH: fuzz: 3000 random strings (len 0..5000, bytes 1..255): exact copy, own block, independent
+OK  atoi_vertical_tab_not_whitespace   ft_atoi        KILLED        FAIL: signs, whitespace, junk, leading zeros, INT_MIN/INT_MAX (vs libc)
+OK  itoa_wrong_only_for_54321          ft_itoa        KILLED        FAIL: exhaustive: every integer from -100000 to 100000
+OK  putnbr_wrong_only_for_12345        ft_putnbr_fd   KILLED        FAIL: 1000 random integers appended to one file
+OK  split_unsigned_char_delimiter_bug  ft_split       KILLED        FAIL: fuzz: 1500 random strings (len up to 400) with delimiters of every kind (0x80, 0xFF, tab, newline, letters)
+OK  strlcpy_stops_copying_at_255       ft_strlcpy     KILLED        FAIL: fuzz: 4000 random sources/sizes incl. size larger than the source; untouched bytes stay untouched
+OK  strncmp_ignores_after_100_chars    ft_strncmp     KILLED        FAIL: fuzz: 20000 random pairs with shared prefixes; also non-terminated slices of exactly n bytes
+OK  memmove_forward_for_big_n          ft_memmove     KILLED        FAIL: non-overlapping copies and a 5000-byte shift by one in both directions
+OK  strjoin_truncates_s1_over_2500     ft_strjoin     KILLED        FAIL: long strings (5000 + 3000 chars)
+OK  substr_start_beyond_255_broken     ft_substr      KILLED        FAIL: fuzz: 6000 random strings (len 0..2000) with random start/len biased to the edges
+OK  calloc_zeroes_only_first_4096      ft_calloc      KILLED        FAIL: block is fully zeroed (heap is pre-filled with 0xA5)
+OK  lstmap_applies_f_twice_on_last     ft_lstmap      KILLED        FAIL: new list of f(content): same length/order, original list untouched, del not called
+OK  strtrim_keeps_last_char_if_0x80    ft_strtrim     KILLED        FAIL: fuzz: 6000 random strings/sets (bytes >= 0x80, spaces, newlines), long runs of trimmed chars
+OK  strtrim_reads_one_byte_before_string ft_strtrim     KILLED        CRASH: nothing to trim, empty set, empty string, everything trimmed
+OK  strrchr_peeks_at_s_minus_1         ft_strrchr     KILLED        CRASH: every byte value on assorted strings (incl. NUL terminator) [front guard]
+OK  memmove_writes_before_dst          ft_memmove     KILLED        CRASH: between separate guarded buffers, n = 0..9000 [front guard]
+OK  strmapi_static_index_breaks_reentrancy ft_strmapi     KILLED        FAIL: re-entrancy: f itself calls ft_strmapi (no static/global state)
+OK  lstclear_static_next_breaks_reentrancy ft_lstclear    KILLED        FAIL: re-entrancy: del itself clears another list with ft_lstclear (list of lists)
+OK  striteri_static_index_breaks_reentrancy ft_striteri    KILLED        FAIL: re-entrancy: f itself calls ft_striteri (no static/global state)
+OK  strmapi_index_truncated_to_ushort  ft_strmapi     KILLED        FAIL: index is passed as a full unsigned int on a 300000-char string (no uchar/ushort truncation)
+OK  striteri_index_truncated_to_ushort ft_striteri    KILLED        FAIL: index is passed as a full unsigned int on a 300000-char string
+OK  lstsize_recursive                  ft_lstsize     KILLED        CRASH: 100000-node list with a 1 MiB stack (recursive implementations crash)
+OK  lstclear_recursive                 ft_lstclear    KILLED        CRASH: 100000-node list with a 1 MiB stack (recursive implementations crash)
+OK  lstsize_writes_to_the_nodes        ft_lstsize     KILLED        CRASH: nodes in read-only memory (the function must not write to them)
+OK  strchr_writes_to_its_input         ft_strchr      KILLED        CRASH: read-only input; 4 MiB string: char absent / first / last / NUL terminator
+OK  lstmap_error_path_mallocs          ft_lstmap      KILLED        CRASH: failing at every malloc: NULL, results released via del, partial list freed [inject]
+OK  memchr_peeks_before_buffer         ft_memchr      KILLED        CRASH: embedded NULs, 0xFF, c converted to unsigned char, never reads past n [front guard]
+OK  strncmp_returns_only_minus_one_or_one ft_strncmp     KILLED        WARN: returns the difference of the first differing bytes (man page), not just -1/1
+OK  substr_over_allocates              ft_substr      KILLED        WARN: allocates only what the result needs, even when len is huge
+OK  putstr_retries_forever_on_write_error ft_putstr_fd   KILLED        WARN: invalid fd (-1) does not crash or write elsewhere
 
-mutants caught: 38/38
+mutants caught: 70/70
 SELF-TEST PASSED

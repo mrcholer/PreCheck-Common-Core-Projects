@@ -13,7 +13,7 @@ from .util import run, tail
 HARNESS_DIR = Path(__file__).resolve().parent.parent / "harness"
 
 
-def build(workdir, proj=None, present=(), sanitize=False, with_lib=True, strip_main=False):
+def build(workdir, proj=None, present=(), sanitize=False, with_lib=True, strip_main=False, opt=None):
     """Compile the harness. Returns (binary_path or None, compiler_output)."""
     workdir = Path(workdir)
     gen = workdir / "gen"
@@ -34,6 +34,20 @@ def build(workdir, proj=None, present=(), sanitize=False, with_lib=True, strip_m
             for n in sorted(present):
                 cmd += ["-Wl,-u," + n]
             lib = Path(proj) / "libft.a"
+            if opt:
+                od = workdir / "opt"
+                od.mkdir(exist_ok=True)
+                objs = []
+                for f in sorted(Path(proj).glob("ft_*.c")):
+                    o = od / (f.stem + ".o")
+                    rc, t = run(["cc", "-O%s" % opt, "-fno-builtin", "-fno-tree-loop-distribute-patterns", "-w", "-I", str(proj), "-c", str(f), "-o", str(o)])
+                    if rc != 0:
+                        return None, "cannot compile %s at -O%s:\n%s" % (f.name, opt, t)
+                    objs.append(str(o))
+                lib = workdir / "libft_opt.a"
+                if lib.exists():
+                    lib.unlink()
+                run(["ar", "rcs", str(lib)] + objs)
             if strip_main:
                 alt = workdir / "libft_nomain.a"
                 shutil.copy(lib, alt)
@@ -72,7 +86,7 @@ def _condense(act):
 
 
 def run_harness(binary, workdir, functions=None, categories=None, probe=False, stress=False, seed=None,
-                timeout=3, sanitize=False, valgrind=False, list_only=False):
+                timeout=3, sanitize=False, valgrind=False, list_only=False, poison=None, front=True):
     args = [str(binary)]
     if list_only:
         args.append("--list")
@@ -89,6 +103,10 @@ def run_harness(binary, workdir, functions=None, categories=None, probe=False, s
     args += ["--timeout", str(timeout)]
     if sanitize or valgrind:
         args.append("--passthrough")
+    if poison is not None:
+        args += ["--poison", "0x%02x" % poison]
+    if not front:
+        args.append("--no-front")
     cmd = args
     if valgrind:
         vg = Path(workdir) / "vglog"
@@ -107,10 +125,11 @@ def run_harness(binary, workdir, functions=None, categories=None, probe=False, s
         parts = line.split("\t")
         if parts[0] == "T" and len(parts) >= 10:
             _, func, cat, name, tier, status, call, exp, act, hint = parts[:10]
+            checks = int(parts[10]) if len(parts) > 10 and parts[10].isdigit() else 0
             act = _condense(act)
             if status == "INFO":
                 exp, hint = "any outcome (undefined behaviour in libc too)", ""
-            res.append(Result(func, cat, name, status, int(tier), call, exp, act, hint))
+            res.append(Result(func, cat, name, status, int(tier), call, exp, act, hint, checks))
         elif parts[0] == "L" and len(parts) >= 5:
             res.append(Result(parts[1], parts[2], parts[3], "LIST", int(parts[4])))
     err = p.stderr.strip()
